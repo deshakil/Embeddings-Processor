@@ -138,5 +138,27 @@ def process_embeddings():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
+
+@app.route('/process_single_embedding', methods=['POST'])
+def process_single_embedding():
+    """
+    API endpoint to process a single metadata blob to embedding for a specific user.
+    """
+    data = request.get_json()
+    user_id = data.get('user_id')
+    blob_name = data.get('blob_name')
+
+    if not user_id or not blob_name:
+        return jsonify({"error": "Missing user_id or blob_name in request"}), 400
+
+    try:
+        result = process_single_metadata_to_embedding(user_id, blob_name)
+        if result.get("status") == "error":
+            return jsonify({"error": result.get("message"), "blob_name": result.get("blob_name")}), 500
+            
+        return jsonify({"message": "Successfully processed single blob", "result": result}), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
 if __name__ == '__main__':
     app.run(debug=True)
