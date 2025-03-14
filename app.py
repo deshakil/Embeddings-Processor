@@ -140,25 +140,47 @@ def process_embeddings():
 
 
 @app.route('/process_single_embedding', methods=['POST'])
-def process_single_embedding():
+def process_single_metadata_to_embedding(user_id, blob_name):
     """
-    API endpoint to process a single metadata blob to embedding for a specific user.
+    Process a single metadata blob to embedding for a specific user.
     """
-    data = request.get_json()
-    user_id = data.get('user_id')
-    blob_name = data.get('blob_name')
+    # Initialize container clients
+    metadata_container_client = blob_service_client.get_container_client(METADATA_CONTAINER)
+    embeddings_container_client = blob_service_client.get_container_client(EMBEDDINGS_CONTAINER)
 
-    if not user_id or not blob_name:
-        return jsonify({"error": "Missing user_id or blob_name in request"}), 400
+    # Ensure the target container exists
+    if not embeddings_container_client.exists():
+        blob_service_client.create_container(EMBEDDINGS_CONTAINER)
 
     try:
-        result = process_single_metadata_to_embedding(user_id, blob_name)
-        if result.get("status") == "error":
-            return jsonify({"error": result.get("message"), "blob_name": result.get("blob_name")}), 500
+        # Ensure blob_name has the proper user_id prefix
+        if not blob_name.startswith(f"{user_id}/"):
+            blob_name = f"{user_id}/{blob_name}"
             
-        return jsonify({"message": "Successfully processed single blob", "result": result}), 200
+        # Step 1: Read metadata directly from blob
+        metadata_content = read_blob_content(metadata_container_client, blob_name)
+        metadata = json.loads(metadata_content)
+        
+        # Extract the file path from the metadata
+        file_path = metadata.get("file_path", "unknown_path")
+        
+        # Step 2: Compute embeddings using Azure OpenAI
+        embeddings = compute_embeddings_with_azure_openai(metadata)
+        
+        # Step 3: Upload embeddings to the target container
+        embeddings_blob_client = embeddings_container_client.get_blob_client(blob_name)
+        upload_embeddings(embeddings_blob_client, blob_name, embeddings, file_path)
+        
+        return {
+            "status": "success",
+            "blob_name": blob_name
+        }
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        return {
+            "status": "error",
+            "blob_name": blob_name,
+            "message": str(e)
+        }
 
 if __name__ == '__main__':
     app.run(debug=True)
