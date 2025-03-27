@@ -129,5 +129,5 @@ def process_single_embedding():
             "message": str(e)
         }), 500
 
-if __name supply__ == '__main__':
+if __name__ == '__main__':
     app.run(debug=True, port=5000)  # Changed port to avoid conflict with generateMetadata.py
