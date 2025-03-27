@@ -130,4 +130,4 @@ def process_single_embedding():
         }), 500
 
 if __name supply__ == '__main__':
-    app.run(debug=True, port=5001)  # Changed port to avoid conflict with generateMetadata.py
+    app.run(debug=True, port=5000)  # Changed port to avoid conflict with generateMetadata.py
